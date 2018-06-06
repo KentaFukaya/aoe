@@ -1381,6 +1381,85 @@ ktcomplete(struct frame *f, struct sk_buff *skb)
 	wake_up(&ktiowq[id]);
 }
 
+/* some callers cannot sleep, and they can call this function,
+ * transmitting the packets later, when interrupts are on
+ */
+static struct sk_buff *
+aoecmd_read_rsp_pkts(struct sk_buff *or_skb)
+{
+	struct aoe_hdr *h, *or_h;
+  struct aoe_atahdr *ah, *or_ah;
+	struct sk_buff *skb, *sl, *sl_tail;
+	struct net_device *ifp;
+
+  unsigned char *data;
+  unsigned int sector_count;
+
+  or_h = (struct aoe_hdr *) or_skb->data;
+  or_ah = (struct aoe_atahdr *) (or_h + 1);
+  sector_count = or_ah->scnt;
+
+	sl = sl_tail = NULL;
+
+	read_lock(&dev_base_lock);
+	for_each_netdev(&init_net, ifp) {
+		dev_hold(ifp);
+		if (!is_aoe_netif(ifp)) {
+			dev_put(ifp);
+			continue;
+		}
+
+		skb = new_skb(sizeof *h + sizeof *ah + sector_count * 512);
+		if (skb == NULL) {
+			printk(KERN_INFO "aoe: skb alloc failure\n");
+			dev_put(ifp);
+			continue;
+		}
+		skb->dev = ifp;
+		skb_put(skb, sizeof *h + sizeof *ah + sector_count * 512);
+		if (sl_tail == NULL)
+			sl_tail = skb;
+
+		h = (struct aoe_hdr *) skb_mac_header(skb);
+    ah = (struct aoe_atahdr *) (h + 1);
+    data = (unsigned char *) (ah + 1);
+
+    //init skb->data
+		memset(h, 0, sizeof *h + sizeof *ah + sector_count * 512);
+    //set aoe_hdr
+		memcpy(h, or_h, sizeof *or_h);
+		memcpy(h->dst, or_h->src, sizeof h->dst);
+		memcpy(h->src, or_h->dst, sizeof h->src);
+		h->verfl = 0x18;
+    //set aoe_atahdr
+		memcpy(ah, or_ah, sizeof *or_ah);
+    ah->errfeat = 0x00;
+    ah->cmdstat = 0x40;
+    ah->scnt = 0x00;
+    //set data
+    unsigned char *test = "------ test lba data ------";
+    memcpy(data, test, 27);
+
+		skb->next = sl;
+		sl = skb;
+		dev_put(ifp);
+	}
+	read_unlock(&dev_base_lock);
+
+	return sl;
+}
+
+struct sk_buff *
+aoecmd_ata_req(struct sk_buff *skb){
+
+	struct sk_buff *sl;
+
+	sl = aoecmd_read_rsp_pkts(skb);
+	aoenet_xmit(sl);
+
+  return skb;
+}
+
 struct sk_buff *
 aoecmd_ata_rsp(struct sk_buff *skb)
 {

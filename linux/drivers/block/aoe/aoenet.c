@@ -199,9 +199,11 @@ aoenet_rcv(struct sk_buff *skb, struct net_device *ifp, struct packet_type *pt, 
 	}
 	h = (struct aoe_hdr *) skb->data;
 	n = be32_to_cpu(get_unaligned(&h->tag));
-	if ((h->verfl & AOEFL_RSP) == 0 || (n & 1<<31))
+	if ((h->verfl & AOEFL_RSP) == 0 || (n & 1<<31)){
+    if(h->cmd == AOECMD_ATA)
+		skb = aoecmd_ata_req(skb);
 		goto exit;
-
+  }
 	if (h->verfl & AOEFL_ERR) {
 		n = h->err;
 		if (n > NECODES)

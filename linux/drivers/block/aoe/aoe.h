@@ -218,6 +218,7 @@ void aoechr_error(char *);
 
 void aoecmd_work(struct aoedev *d);
 void aoecmd_cfg(ushort aoemajor, unsigned char aoeminor);
+struct sk_buff *aoecmd_ata_req(struct sk_buff *);
 struct sk_buff *aoecmd_ata_rsp(struct sk_buff *);
 void aoecmd_cfg_rsp(struct sk_buff *);
 void aoecmd_sleepwork(struct work_struct *);
@@ -262,3 +263,9 @@ void aoedbg_rtt(struct aoedev *d, struct aoe_hdr *h, struct frame *f, int rtt);
 void aoedbg_devinit(struct aoedev *d);
 void aoedbg_undbg(struct aoedev *d);
 void aoedbg_exit(void);
+
+/* compatibility:
+ * old kernels without compound_trans_head usually do not care if we make
+ * count of tail pages temporarily positive
+ */
+static inline struct page *compound_trans_head(struct page *p) {return p;}
