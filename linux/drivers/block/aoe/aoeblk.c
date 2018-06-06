@@ -409,7 +409,7 @@ gderr:		spin_lock_irqsave(&d->lock, flags);
 	WARN_ON(d->gd);
 	WARN_ON(d->flags & DEVFL_UP);
 
-	q->backing_dev_info.ra_pages = READ_AHEAD / PAGE_CACHE_SIZE;
+	q->backing_dev_info->ra_pages = READ_AHEAD / PAGE_CACHE_SIZE;
 
 	d->bufpool = mp;
 	d->blkq = gd->queue = q;
