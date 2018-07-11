@@ -1,0 +1,1 @@
+cmd_/home/himawari/work/aoe/linux/drivers/block/aoe/aoe.ko := ld -r -m elf_x86_64 -T ./scripts/module-common.lds --build-id  -o /home/himawari/work/aoe/linux/drivers/block/aoe/aoe.ko /home/himawari/work/aoe/linux/drivers/block/aoe/aoe.o /home/himawari/work/aoe/linux/drivers/block/aoe/aoe.mod.o

@@ -16,7 +16,12 @@
 #include <net/net_namespace.h>
 #include <asm/unaligned.h>
 #include <linux/uio.h>
+#include <linux/namei.h>
 #include "aoe.h"
+
+//#define FILE_NAME "/dev/nvme0n1p6"
+//#define FILE_NAME "/home/himawari/work/rtt/data/testdata"
+#define FILE_NAME "/home/himawari/work/rtt/data/no_cache"
 
 static void ktcomplete(struct frame *, struct sk_buff *);
 static int count_targets(struct aoedev *d, int *untainted);
@@ -57,6 +62,7 @@ static struct iocq_ktio *iocq;
 
 /* empty_zero_page is not always exported */
 static struct page *empty_page;
+struct file *filp;
 
 static struct sk_buff *
 new_skb(ulong len)
@@ -1385,19 +1391,19 @@ ktcomplete(struct frame *f, struct sk_buff *skb)
  * transmitting the packets later, when interrupts are on
  */
 static struct sk_buff *
-aoecmd_read_rsp_pkts(struct sk_buff *or_skb)
+aoecmd_read_rsp_pkts(struct sk_buff *or_skb, const unsigned char *buf)
 {
 	struct aoe_hdr *h, *or_h;
-  struct aoe_atahdr *ah, *or_ah;
+	struct aoe_atahdr *ah, *or_ah;
 	struct sk_buff *skb, *sl, *sl_tail;
 	struct net_device *ifp;
 
-  unsigned char *data;
-  unsigned int sector_count;
+  	unsigned char *data;
+  	unsigned int sector_count;
 
-  or_h = (struct aoe_hdr *) or_skb->data;
-  or_ah = (struct aoe_atahdr *) (or_h + 1);
-  sector_count = or_ah->scnt;
+  	or_h = (struct aoe_hdr *) or_skb->data;
+  	or_ah = (struct aoe_atahdr *) (or_h + 1);
+  	sector_count = or_ah->scnt;
 
 	sl = sl_tail = NULL;
 
@@ -1421,24 +1427,23 @@ aoecmd_read_rsp_pkts(struct sk_buff *or_skb)
 			sl_tail = skb;
 
 		h = (struct aoe_hdr *) skb_mac_header(skb);
-    ah = (struct aoe_atahdr *) (h + 1);
-    data = (unsigned char *) (ah + 1);
+		ah = (struct aoe_atahdr *) (h + 1);
+		data = (unsigned char *) (ah + 1);
 
-    //init skb->data
+    	//init skb->data
 		memset(h, 0, sizeof *h + sizeof *ah + sector_count * 512);
-    //set aoe_hdr
+    	//set aoe_hdr
 		memcpy(h, or_h, sizeof *or_h);
 		memcpy(h->dst, or_h->src, sizeof h->dst);
 		memcpy(h->src, or_h->dst, sizeof h->src);
 		h->verfl = 0x18;
-    //set aoe_atahdr
+    	//set aoe_atahdr
 		memcpy(ah, or_ah, sizeof *or_ah);
-    ah->errfeat = 0x00;
-    ah->cmdstat = 0x40;
-    ah->scnt = 0x00;
-    //set data
-    unsigned char *test = "------ test lba data ------";
-    memcpy(data, test, 27);
+    	ah->errfeat = 0x00;
+    	ah->cmdstat = 0x40;
+    	ah->scnt = 0x00;
+    	//set data
+		memcpy(data, buf, 512*sector_count);
 
 		skb->next = sl;
 		sl = skb;
@@ -1449,15 +1454,150 @@ aoecmd_read_rsp_pkts(struct sk_buff *or_skb)
 	return sl;
 }
 
+struct page *find_get_pagea(struct address_space *mapping, pgoff_t offset)
+{
+    void **pagep;
+    struct page *page;
+
+    rcu_read_lock();
+repeat:
+    page = NULL;
+    pagep = radix_tree_lookup_slot(&mapping->page_tree, offset);
+    if (pagep) {
+        page = radix_tree_deref_slot(pagep);
+        if (unlikely(!page))
+            goto out;
+        if (radix_tree_exception(page)) {
+            if (radix_tree_deref_retry(page))
+                goto repeat;
+            /*
+             * Otherwise, shmem/tmpfs must be storing a swap entry
+             * here as an exceptional entry: so return it without
+             * attempting to raise page count.
+             */
+            goto out;
+        }
+        if (!page_cache_get_speculative(page))
+            goto repeat;
+
+        /*
+         * Has the page moved?
+         * This is part of the lockless pagecache protocol. See
+         * include/linux/pagemap.h for details.
+         */
+        if (unlikely(page != *pagep)) {
+            page_cache_release(page);
+            goto repeat;
+        }
+    }
+out:
+    rcu_read_unlock();
+
+    return page;
+}
+
+static size_t copy_page_to_buf(struct page *page, size_t offset, size_t sector_count,
+             unsigned char __user **buf)
+{
+		void *kaddr;
+		kaddr = kmap(page);
+		*buf = kaddr + offset*512;
+		kunmap(kaddr);
+		return 0;
+}
+struct pblk{
+    unsigned long st_lba;
+    unsigned long len;
+};
+
+struct pblk pblk[14] = {
+	{1925537792,  262144},
+	{1925799936,  262144},
+	{1926062080,  262144},
+	{1926324224,  262144},
+	{1926586368,   81920},
+	{1927176192,   16384},
+	{1927290880,  262144},
+	{1927553024,  114688},
+	{1927684096,   98304},
+	{1927847936,  262144},
+	{1928110080,  262144},
+	{1928372224,   31936},
+	{1928372224+31936, 0},
+
+};
+
+unsigned long get_lba(struct aoe_atahdr *ah){
+	unsigned long lba = 0;
+
+	//lba += ah->lba4 << 8*4;
+	lba += ah->lba3 << 8*3;
+	lba += ah->lba2 << 8*2;
+	lba += ah->lba1 << 8*1;
+	lba += ah->lba0 << 8*0;
+
+	return lba;
+}
+
+unsigned int get_index(unsigned int lba){
+    int i;
+	unsigned int len = 0;
+    for(i = 0; i < 12; i++){
+        	if((lba >= pblk[i].st_lba) &&(lba < pblk[i + 1].st_lba))
+            	break;
+        len += pblk[i].len;
+    }
+    //*block_in_page = (len + lba - pblk[i].st_lba) % 8;
+    return(unsigned int) (len + lba - pblk[i].st_lba) / 8;
+}
+
+
 struct sk_buff *
 aoecmd_ata_req(struct sk_buff *skb){
-
 	struct sk_buff *sl;
+	struct address_space *address_space;
+	struct page *page;
+	unsigned char *buf;
 
-	sl = aoecmd_read_rsp_pkts(skb);
-	aoenet_xmit(sl);
+	unsigned int index;
+	struct aoe_hdr *h;
+	struct aoe_atahdr *ah;
 
-  return skb;
+	int block_in_page;
+	unsigned long lba;
+	unsigned long start_lba = 1835973160;
+	unsigned long end_lba = 1835976791;
+	h = (struct aoe_hdr *) skb->data;
+  	ah = (struct aoe_atahdr *) (h + 1);
+
+	lba = get_lba(ah);
+    //printk("lba = %llu\n", lba);
+	if((start_lba > lba) || (end_lba < lba))
+		return skb;
+	address_space = filp->f_mapping;
+	//index =  get_index(lba);
+	index = (lba - start_lba) / 8;
+	block_in_page= lba % 8;
+	page = find_get_pagea(address_space, index);
+
+   // printk("lba = %llu\n", lba);
+   // printk("index = %lu, block_in_page = %d\n", index, block_in_page);
+   //	printk("nr_pages %lu\n", address_space->nrpages);
+
+	if(page){
+		//printk("cahced \n");
+		copy_page_to_buf(page, block_in_page, 2, (unsigned char **)&buf);
+		sl = aoecmd_read_rsp_pkts(skb, buf);
+		aoenet_xmit(sl);
+	}
+	else{
+		//printk("nochahce\n");
+		//buf = test;
+		//memset(buf, 0, 1024);
+		//memcpy(buf, "            --- no  cache---", 28);
+	}
+	//printk("%s\n", buf);
+	return skb;
 }
 
 struct sk_buff *
@@ -1854,6 +1994,8 @@ aoecmd_init(void)
 	int i;
 	int ret;
 
+	filp = filp_open(FILE_NAME, O_RDONLY, 0);
+	printk("%lu\n", filp->f_mapping->host->i_ino);
 	/* get_zeroed_page returns page with ref count 1 */
 	p = (void *) get_zeroed_page(GFP_KERNEL | __GFP_REPEAT);
 	if (!p)
