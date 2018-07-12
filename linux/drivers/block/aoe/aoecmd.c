@@ -19,9 +19,12 @@
 #include <linux/namei.h>
 #include "aoe.h"
 
-//#define FILE_NAME "/dev/nvme0n1p6"
-//#define FILE_NAME "/home/himawari/work/rtt/data/testdata"
-#define FILE_NAME "/home/himawari/work/rtt/data/no_cache"
+#include "ext4_h/ext4.h" /* page_has_private*/
+#include "ext4_h/extents_status.h" /* page_has_private*/
+#include "ext4_h/cache_status.h"
+
+
+#define FILE_NAME "/home/himawari/work/aoe/COPYING"
 
 static void ktcomplete(struct frame *, struct sk_buff *);
 static int count_targets(struct aoedev *d, int *untainted);
@@ -1442,6 +1445,7 @@ aoecmd_read_rsp_pkts(struct sk_buff *or_skb, const unsigned char *buf)
     	ah->errfeat = 0x00;
     	ah->cmdstat = 0x40;
     	ah->scnt = 0x00;
+		printk("%s\n", buf);
     	//set data
 		memcpy(data, buf, 512*sector_count);
 
@@ -1501,31 +1505,10 @@ static size_t copy_page_to_buf(struct page *page, size_t offset, size_t sector_c
 {
 		void *kaddr;
 		kaddr = kmap(page);
-		*buf = kaddr + offset*512;
+		*buf = kaddr + offset*514;
 		kunmap(kaddr);
 		return 0;
 }
-struct pblk{
-    unsigned long st_lba;
-    unsigned long len;
-};
-
-struct pblk pblk[14] = {
-	{1925537792,  262144},
-	{1925799936,  262144},
-	{1926062080,  262144},
-	{1926324224,  262144},
-	{1926586368,   81920},
-	{1927176192,   16384},
-	{1927290880,  262144},
-	{1927553024,  114688},
-	{1927684096,   98304},
-	{1927847936,  262144},
-	{1928110080,  262144},
-	{1928372224,   31936},
-	{1928372224+31936, 0},
-
-};
 
 unsigned long get_lba(struct aoe_atahdr *ah){
 	unsigned long lba = 0;
@@ -1539,64 +1522,44 @@ unsigned long get_lba(struct aoe_atahdr *ah){
 	return lba;
 }
 
-unsigned int get_index(unsigned int lba){
-    int i;
-	unsigned int len = 0;
-    for(i = 0; i < 12; i++){
-        	if((lba >= pblk[i].st_lba) &&(lba < pblk[i + 1].st_lba))
-            	break;
-        len += pblk[i].len;
-    }
-    //*block_in_page = (len + lba - pblk[i].st_lba) % 8;
-    return(unsigned int) (len + lba - pblk[i].st_lba) / 8;
-}
-
 
 struct sk_buff *
 aoecmd_ata_req(struct sk_buff *skb){
 	struct sk_buff *sl;
 	struct address_space *address_space;
+	struct inode *inode;
+	struct extent_status es;
 	struct page *page;
 	unsigned char *buf;
 
-	unsigned int index;
 	struct aoe_hdr *h;
 	struct aoe_atahdr *ah;
 
-	int block_in_page;
+	unsigned int block_in_page;
 	unsigned long lba;
-	unsigned long start_lba = 1835973160;
-	unsigned long end_lba = 1835976791;
 	h = (struct aoe_hdr *) skb->data;
   	ah = (struct aoe_atahdr *) (h + 1);
-
+	
+	inode = ilookup(filp->f_mapping->host->i_sb, 2);
 	lba = get_lba(ah);
     //printk("lba = %llu\n", lba);
-	if((start_lba > lba) || (end_lba < lba))
-		return skb;
-	address_space = filp->f_mapping;
-	//index =  get_index(lba);
-	index = (lba - start_lba) / 8;
-	block_in_page= lba % 8;
-	page = find_get_pagea(address_space, index);
 
-   // printk("lba = %llu\n", lba);
-   // printk("index = %lu, block_in_page = %d\n", index, block_in_page);
-   //	printk("nr_pages %lu\n", address_space->nrpages);
-
-	if(page){
-		//printk("cahced \n");
-		copy_page_to_buf(page, block_in_page, 2, (unsigned char **)&buf);
-		sl = aoecmd_read_rsp_pkts(skb, buf);
-		aoenet_xmit(sl);
-	}
-	else{
-		//printk("nochahce\n");
-		//buf = test;
-		//memset(buf, 0, 1024);
-		//memcpy(buf, "            --- no  cache---", 28);
-	}
-	//printk("%s\n", buf);
+	es = find_es_in_tree(inode, lba, &block_in_page);
+	if(es.es_len != -1){
+    	//printk("index = %lu, block_in_page = %d\n", es.es_len, block_in_page);
+		inode = ilookup(filp->f_mapping->host->i_sb, es.inode->i_ino);
+		address_space = es.inode->i_mapping;
+		page = find_get_pagea(address_space, es.es_len);
+		if(page){
+			printk("cahced \n");
+			copy_page_to_buf(page, block_in_page, 2, (unsigned char **)&buf);
+			sl = aoecmd_read_rsp_pkts(skb, buf);
+			aoenet_xmit(sl);
+		}else{
+			printk("no_cache \n");
+		}
+	}else
+			printk("no_cache \n");
 	return skb;
 }
 

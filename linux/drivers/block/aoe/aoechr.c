@@ -46,7 +46,7 @@ static int emsgs_head_idx, emsgs_tail_idx;
 static struct semaphore emsgs_sema;
 static spinlock_t emsgs_lock;
 static int nblocked_emsgs_readers;
-static struct class_simple *aoe_class;
+static struct class *aoe_class;
 static struct aoe_chardev chardevs[] = {
 	{ MINOR_ERR, DEVICE_SUBDIR "/err" },
 	{ MINOR_DISCOVER, DEVICE_SUBDIR "/discover" },
@@ -299,8 +299,8 @@ aoechr_exit(void)
 	int i;
 
 	for (i = 0; i < ARRAY_SIZE(chardevs); ++i)
-		class_simple_device_remove(MKDEV(AOE_MAJOR, chardevs[i].minor));
-	class_simple_destroy(aoe_class);
+		device_destroy(aoe_class, MKDEV(AOE_MAJOR, chardevs[i].minor));
+	class_destroy(aoe_class);
 	unregister_chrdev(AOE_MAJOR, "aoechr");
 }
 
