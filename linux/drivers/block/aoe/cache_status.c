@@ -1,24 +1,32 @@
 #include "ext4_h/ext4.h"
-#include "ext4_h/extents_status.h"
-
 #include "ext4_h/cache_status.h"
 
 #define PARTTION_START 1796644864
 
+extern struct ext4_es_tree* root_tree;
+
+void ext4_es_init_tree(struct ext4_es_tree *tree)
+{
+	tree->root = RB_ROOT;
+	tree->cache_es = NULL;
+}
+
 int __init init_cs(void)
 {
 	printk("init_cs\n");
+	root_tree = kmalloc(sizeof(struct ext4_es_tree), GFP_KERNEL);
+	ext4_es_init_tree(root_tree);
     return 0;
 }
 
 void exit_cs(void)
 {
+	kfree(root_tree);
 	printk("exit_cs\n");
 }
 
-
 static struct extent_status *
-cs_alloc_extent(struct inode *inode, struct extent_status *newes)
+cs_alloc_extent(struct extent_status *newes)
 {
 	struct extent_status *es;
 	es = kmalloc(sizeof(struct extent_status), GFP_KERNEL);
@@ -30,13 +38,12 @@ cs_alloc_extent(struct inode *inode, struct extent_status *newes)
 	es->es_pblk = newes->es_pblk;
 	es->inode = newes->inode;//added
 
-	EXT4_I(inode)->i_es_all_nr++;
 	return es;
 }
 
-static void cs_free_extent(struct inode *inode, struct extent_status *es)
+static void cs_free_extent(struct extent_status *es)
 {
-    EXT4_I(inode)->i_es_all_nr--;
+	kfree(es);
 }
 
 static int cs_can_be_merged(struct extent_status *es1,
@@ -60,9 +67,9 @@ static int cs_can_be_merged(struct extent_status *es1,
 }
 
 static struct extent_status *
-cs_try_to_merge_left(struct inode *inode, struct extent_status *es)
+cs_try_to_merge_left(struct extent_status *es)
 {
-	struct ext4_es_tree *tree = &EXT4_I(inode)->i_es_tree;
+	struct ext4_es_tree *tree = root_tree;
 	struct extent_status *es1;
 	struct rb_node *node;
 
@@ -76,7 +83,7 @@ cs_try_to_merge_left(struct inode *inode, struct extent_status *es)
 		if (ext4_es_is_referenced(es))
 			ext4_es_set_referenced(es1);
 		rb_erase(&es->rb_node, &tree->root);
-		cs_free_extent(inode, es);
+		cs_free_extent(es);
 		es = es1;
 	}
 
@@ -84,9 +91,9 @@ cs_try_to_merge_left(struct inode *inode, struct extent_status *es)
 }
 
 static struct extent_status *
-cs_try_to_merge_right(struct inode *inode, struct extent_status *es)
+cs_try_to_merge_right(struct extent_status *es)
 {
-	struct ext4_es_tree *tree = &EXT4_I(inode)->i_es_tree;
+	struct ext4_es_tree *tree = root_tree;
 	struct extent_status *es1;
 	struct rb_node *node;
 
@@ -100,7 +107,7 @@ cs_try_to_merge_right(struct inode *inode, struct extent_status *es)
 		if (ext4_es_is_referenced(es1))
 			ext4_es_set_referenced(es);
 		rb_erase(node, &tree->root);
-		cs_free_extent(inode, es1);
+		cs_free_extent(es1);
 	}
 
 	return es;
@@ -111,14 +118,13 @@ static inline ext4_fsblk_t cs_end(struct extent_status *es)
 	return es->es_pblk + es->es_len - 1;
 }
 
-static int __cs_insert_extent(struct inode *inode, struct extent_status *newes)
+static int __cs_insert_extent(struct extent_status *newes)
 {
-	struct ext4_es_tree *tree = &EXT4_I(inode)->i_es_tree;
+	struct ext4_es_tree *tree = root_tree;
 	struct rb_node **p = &tree->root.rb_node;
 	struct rb_node *parent = NULL;
 	struct extent_status *es;
 	
-	//printk("[__cs_insert_extent] es nr %u\n", EXT4_I(inode)->i_es_all_nr);
 	if(!tree)
 		return 0;
 	
@@ -134,14 +140,14 @@ static int __cs_insert_extent(struct inode *inode, struct extent_status *newes)
 				    ext4_es_is_unwritten(es))
 					ext4_es_store_pblock(es,
 							     newes->es_pblk);
-				es = cs_try_to_merge_left(inode, es);
+				es = cs_try_to_merge_left(es);
 				goto out;
 			}
 			p = &(*p)->rb_left;
 		} else if (newes->es_pblk > cs_end(es)) {
 			if (cs_can_be_merged(es, newes)) {
 				es->es_len += newes->es_len;
-				es = cs_try_to_merge_right(inode, es);
+				es = cs_try_to_merge_right(es);
 				goto out;
 			}
 			p = &(*p)->rb_right;
@@ -149,7 +155,7 @@ static int __cs_insert_extent(struct inode *inode, struct extent_status *newes)
 			goto out;
 		}
 	}
-	es = cs_alloc_extent(inode, newes);
+	es = cs_alloc_extent(newes);
 	rb_link_node(&es->rb_node, parent, p);
 	rb_insert_color(&es->rb_node, &tree->root);
 out:
@@ -162,16 +168,6 @@ int cs_insert_extent(struct inode *inode, ext4_lblk_t lblk,
 {
 	struct extent_status newes;
 	int err = 0;
-	struct inode *tree_inode;
-
-	tree_inode = ilookup(inode->i_sb, 2);
-	if(!tree_inode){
-		printk("cant get tree_inode\n");
-		return -1;
-	}
-		
-	if (!len)
-		return 0;
 
 	newes.es_lblk = lblk;
 	newes.es_pblk = pblk;
@@ -179,18 +175,18 @@ int cs_insert_extent(struct inode *inode, ext4_lblk_t lblk,
 	newes.inode = inode;
 
 	write_lock(&EXT4_I(inode)->i_es_lock);
-	err = __cs_insert_extent(tree_inode, &newes);
+	err = __cs_insert_extent(&newes);
 	write_unlock(&EXT4_I(inode)->i_es_lock);
 	
 	return err;
 }
 
-void cs_print_tree(struct seq_file *s, struct inode *inode)
+void cs_print_tree(struct seq_file *s)
 {
     struct ext4_es_tree *tree;
     struct rb_node *node;
 
-    tree = &EXT4_I(inode)->i_es_tree;
+    tree = root_tree;
     node = rb_first(&tree->root);
     while (node) {
         struct extent_status *es;
@@ -200,13 +196,15 @@ void cs_print_tree(struct seq_file *s, struct inode *inode)
    }
 }
 
-struct extent_status find_es_in_tree(struct inode *inode, ext4_fsblk_t lba, unsigned int *offset){
+struct extent_status find_es_in_tree(ext4_fsblk_t lba, unsigned int *offset){
 	struct extent_status newes;
-	struct ext4_es_tree *tree = &EXT4_I(inode)->i_es_tree;
+	struct ext4_es_tree *tree = root_tree;
 	struct rb_node **p = &tree->root.rb_node;
 	struct rb_node *parent = NULL;
 	struct extent_status *es;
-	newes.es_pblk = (lba - PARTTION_START)/8;
+	newes.es_pblk = (lba-PARTTION_START)/8;
+
+	printk("[find_es_in_tree]%llu lba %llu\n", lba/8, lba);
 	while (*p) {
 		parent = *p;
 		es = rb_entry(parent, struct extent_status, rb_node);

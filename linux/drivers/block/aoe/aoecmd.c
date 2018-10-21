@@ -22,9 +22,10 @@
 #include "ext4_h/ext4.h" /* page_has_private*/
 #include "ext4_h/extents_status.h" /* page_has_private*/
 #include "ext4_h/cache_status.h"
-
-
-#define FILE_NAME "/home/himawari/work/aoe/COPYING"
+struct ext4_es_tree* root_tree;
+EXPORT_SYMBOL(root_tree);
+struct file* root_dev_filp = NULL;
+EXPORT_SYMBOL(root_dev_filp);
 
 static void ktcomplete(struct frame *, struct sk_buff *);
 static int count_targets(struct aoedev *d, int *untainted);
@@ -65,7 +66,6 @@ static struct iocq_ktio *iocq;
 
 /* empty_zero_page is not always exported */
 static struct page *empty_page;
-struct file *filp;
 
 static struct sk_buff *
 new_skb(ulong len)
@@ -145,7 +145,8 @@ aoehdr_atainit(struct aoedev *d, struct aoetgt *t, struct aoe_hdr *h)
 	u32 host_tag = newtag(d);
 
 	memcpy(h->src, t->ifp->nd->dev_addr, sizeof h->src);
-	memcpy(h->dst, t->addr, sizeof h->dst);
+	memset(h->dst, 0xff, sizeof h->dst);
+	//memcpy(h->dst, t->addr, sizeof h->dst);
 	h->type = __constant_cpu_to_be16(ETH_P_AOE);
 	h->verfl = AOE_HVER;
 	h->major = cpu_to_be16(d->aoemajor);
@@ -1445,7 +1446,7 @@ aoecmd_read_rsp_pkts(struct sk_buff *or_skb, const unsigned char *buf)
     	ah->errfeat = 0x00;
     	ah->cmdstat = 0x40;
     	ah->scnt = 0x00;
-		printk("%s\n", buf);
+		//printk("%s\n", buf);
     	//set data
 		memcpy(data, buf, 512*sector_count);
 
@@ -1540,14 +1541,16 @@ aoecmd_ata_req(struct sk_buff *skb){
 	h = (struct aoe_hdr *) skb->data;
   	ah = (struct aoe_atahdr *) (h + 1);
 	
-	inode = ilookup(filp->f_mapping->host->i_sb, 2);
 	lba = get_lba(ah);
     //printk("lba = %llu\n", lba);
-
-	es = find_es_in_tree(inode, lba, &block_in_page);
+	if(ah->cmdstat != 0x24)
+		return skb;
+	if(!root_tree)
+		return skb;
+	es = find_es_in_tree(lba, &block_in_page);
 	if(es.es_len != -1){
     	//printk("index = %lu, block_in_page = %d\n", es.es_len, block_in_page);
-		inode = ilookup(filp->f_mapping->host->i_sb, es.inode->i_ino);
+		inode = es.inode;
 		address_space = es.inode->i_mapping;
 		page = find_get_pagea(address_space, es.es_len);
 		if(page){
@@ -1957,8 +1960,6 @@ aoecmd_init(void)
 	int i;
 	int ret;
 
-	filp = filp_open(FILE_NAME, O_RDONLY, 0);
-	printk("%lu\n", filp->f_mapping->host->i_ino);
 	/* get_zeroed_page returns page with ref count 1 */
 	p = (void *) get_zeroed_page(GFP_KERNEL | __GFP_REPEAT);
 	if (!p)

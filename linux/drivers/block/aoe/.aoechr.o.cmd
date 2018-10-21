@@ -1,16 +1,9 @@
-cmd_/home/himawari/work/aoe/linux/drivers/block/aoe/cache_status.o := gcc -Wp,-MD,/home/himawari/work/aoe/linux/drivers/block/aoe/.cache_status.o.d  -nostdinc -isystem /usr/lib/gcc/x86_64-linux-gnu/5/include  -I./arch/x86/include -Iarch/x86/include/generated/uapi -Iarch/x86/include/generated  -Iinclude -I./arch/x86/include/uapi -Iarch/x86/include/generated/uapi -I./include/uapi -Iinclude/generated/uapi -include ./include/linux/kconfig.h -Iubuntu/include  -D__KERNEL__ -fno-pie -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs -fno-strict-aliasing -fno-common -Werror-implicit-function-declaration -Wno-format-security -std=gnu89 -fno-PIE -fno-pie -no-pie -mno-sse -mno-mmx -mno-sse2 -mno-3dnow -mno-avx -m64 -falign-jumps=1 -falign-loops=1 -mno-80387 -mno-fp-ret-in-387 -mpreferred-stack-boundary=3 -mskip-rax-setup -mtune=generic -mno-red-zone -mcmodel=kernel -funit-at-a-time -maccumulate-outgoing-args -DCONFIG_X86_X32_ABI -DCONFIG_AS_CFI=1 -DCONFIG_AS_CFI_SIGNAL_FRAME=1 -DCONFIG_AS_CFI_SECTIONS=1 -DCONFIG_AS_FXSAVEQ=1 -DCONFIG_AS_SSSE3=1 -DCONFIG_AS_CRC32=1 -DCONFIG_AS_AVX=1 -DCONFIG_AS_AVX2=1 -DCONFIG_AS_SHA1_NI=1 -DCONFIG_AS_SHA256_NI=1 -pipe -Wno-sign-compare -fno-asynchronous-unwind-tables -mindirect-branch=thunk-extern -mindirect-branch-register -DRETPOLINE -fno-delete-null-pointer-checks -Wno-maybe-uninitialized -O2 --param=allow-store-data-races=0 -DCC_HAVE_ASM_GOTO -Wframe-larger-than=1024 -fstack-protector-strong -Wno-unused-but-set-variable -fno-omit-frame-pointer -fno-optimize-sibling-calls -fno-var-tracking-assignments -pg -mfentry -DCC_USING_FENTRY -Wdeclaration-after-statement -Wno-pointer-sign -fno-strict-overflow -fno-merge-all-constants -fmerge-constants -fno-stack-check -fconserve-stack -Werror=implicit-int -Werror=strict-prototypes -Werror=date-time -DAOE_PARTITIONS=16 -DDEVSUBDIR='"etherd"' -DAOE_DYNDEVS=1  -DMODULE  -D"KBUILD_STR(s)=\#s" -D"KBUILD_BASENAME=KBUILD_STR(cache_status)"  -D"KBUILD_MODNAME=KBUILD_STR(aoe)" -c -o /home/himawari/work/aoe/linux/drivers/block/aoe/.tmp_cache_status.o /home/himawari/work/aoe/linux/drivers/block/aoe/cache_status.c
+cmd_/home/himawari/work/aoe/linux/drivers/block/aoe/aoechr.o := gcc -Wp,-MD,/home/himawari/work/aoe/linux/drivers/block/aoe/.aoechr.o.d  -nostdinc -isystem /usr/lib/gcc/x86_64-linux-gnu/5/include  -I./arch/x86/include -Iarch/x86/include/generated/uapi -Iarch/x86/include/generated  -Iinclude -I./arch/x86/include/uapi -Iarch/x86/include/generated/uapi -I./include/uapi -Iinclude/generated/uapi -include ./include/linux/kconfig.h -Iubuntu/include  -D__KERNEL__ -fno-pie -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs -fno-strict-aliasing -fno-common -Werror-implicit-function-declaration -Wno-format-security -std=gnu89 -fno-PIE -fno-pie -no-pie -mno-sse -mno-mmx -mno-sse2 -mno-3dnow -mno-avx -m64 -falign-jumps=1 -falign-loops=1 -mno-80387 -mno-fp-ret-in-387 -mpreferred-stack-boundary=3 -mskip-rax-setup -mtune=generic -mno-red-zone -mcmodel=kernel -funit-at-a-time -maccumulate-outgoing-args -DCONFIG_X86_X32_ABI -DCONFIG_AS_CFI=1 -DCONFIG_AS_CFI_SIGNAL_FRAME=1 -DCONFIG_AS_CFI_SECTIONS=1 -DCONFIG_AS_FXSAVEQ=1 -DCONFIG_AS_SSSE3=1 -DCONFIG_AS_CRC32=1 -DCONFIG_AS_AVX=1 -DCONFIG_AS_AVX2=1 -DCONFIG_AS_SHA1_NI=1 -DCONFIG_AS_SHA256_NI=1 -pipe -Wno-sign-compare -fno-asynchronous-unwind-tables -mindirect-branch=thunk-extern -mindirect-branch-register -DRETPOLINE -fno-delete-null-pointer-checks -Wno-maybe-uninitialized -O2 --param=allow-store-data-races=0 -DCC_HAVE_ASM_GOTO -Wframe-larger-than=1024 -fstack-protector-strong -Wno-unused-but-set-variable -fno-omit-frame-pointer -fno-optimize-sibling-calls -fno-var-tracking-assignments -pg -mfentry -DCC_USING_FENTRY -Wdeclaration-after-statement -Wno-pointer-sign -fno-strict-overflow -fno-merge-all-constants -fmerge-constants -fno-stack-check -fconserve-stack -Werror=implicit-int -Werror=strict-prototypes -Werror=date-time -DAOE_PARTITIONS=16 -DDEVSUBDIR='"etherd"' -DAOE_DYNDEVS=1  -DMODULE  -D"KBUILD_STR(s)=\#s" -D"KBUILD_BASENAME=KBUILD_STR(aoechr)"  -D"KBUILD_MODNAME=KBUILD_STR(aoe)" -c -o /home/himawari/work/aoe/linux/drivers/block/aoe/.tmp_aoechr.o /home/himawari/work/aoe/linux/drivers/block/aoe/aoechr.c
 
-source_/home/himawari/work/aoe/linux/drivers/block/aoe/cache_status.o := /home/himawari/work/aoe/linux/drivers/block/aoe/cache_status.c
+source_/home/himawari/work/aoe/linux/drivers/block/aoe/aoechr.o := /home/himawari/work/aoe/linux/drivers/block/aoe/aoechr.c
 
-deps_/home/himawari/work/aoe/linux/drivers/block/aoe/cache_status.o := \
-  /home/himawari/work/aoe/linux/drivers/block/aoe/ext4_h/ext4.h \
-    $(wildcard include/config/ext4/fs/encryption.h) \
-    $(wildcard include/config/compat.h) \
-    $(wildcard include/config/quota.h) \
-    $(wildcard include/config/fs/dax.h) \
-    $(wildcard include/config/printk.h) \
-    $(wildcard include/config/smp.h) \
-  include/generated/uapi/linux/version.h \
+deps_/home/himawari/work/aoe/linux/drivers/block/aoe/aoechr.o := \
+  include/uapi/linux/hdreg.h \
   include/linux/types.h \
     $(wildcard include/config/have/uid16.h) \
     $(wildcard include/config/uid16.h) \
@@ -57,6 +50,7 @@ deps_/home/himawari/work/aoe/linux/drivers/block/aoe/cache_status.o := \
     $(wildcard include/config/bounce.h) \
     $(wildcard include/config/mmu.h) \
   include/linux/sched.h \
+    $(wildcard include/config/smp.h) \
     $(wildcard include/config/no/hz/common.h) \
     $(wildcard include/config/sched/debug.h) \
     $(wildcard include/config/debug/atomic/sleep.h) \
@@ -103,6 +97,7 @@ deps_/home/himawari/work/aoe/linux/drivers/block/aoe/cache_status.o := \
     $(wildcard include/config/task/xacct.h) \
     $(wildcard include/config/cpusets.h) \
     $(wildcard include/config/futex.h) \
+    $(wildcard include/config/compat.h) \
     $(wildcard include/config/debug/preempt.h) \
     $(wildcard include/config/numa/balancing.h) \
     $(wildcard include/config/arch/want/batched/unmap/tlb/flush.h) \
@@ -195,6 +190,7 @@ deps_/home/himawari/work/aoe/linux/drivers/block/aoe/cache_status.o := \
   include/linux/printk.h \
     $(wildcard include/config/message/loglevel/default.h) \
     $(wildcard include/config/early/printk.h) \
+    $(wildcard include/config/printk.h) \
     $(wildcard include/config/dynamic/debug.h) \
   include/linux/init.h \
     $(wildcard include/config/broken/rodata.h) \
@@ -735,7 +731,9 @@ deps_/home/himawari/work/aoe/linux/drivers/block/aoe/cache_status.o := \
     $(wildcard include/config/ima.h) \
     $(wildcard include/config/fsnotify.h) \
     $(wildcard include/config/file/locking.h) \
+    $(wildcard include/config/quota.h) \
     $(wildcard include/config/blk/dev/loop.h) \
+    $(wildcard include/config/fs/dax.h) \
     $(wildcard include/config/migration.h) \
   include/linux/dcache.h \
   include/linux/rculist_bl.h \
@@ -875,36 +873,11 @@ deps_/home/himawari/work/aoe/linux/drivers/block/aoe/cache_status.o := \
   include/linux/elevator.h \
   include/linux/hashtable.h \
   include/linux/hash.h \
-  include/linux/jbd2.h \
-    $(wildcard include/config/jbd2/debug.h) \
-  include/linux/buffer_head.h \
-  include/linux/journal-head.h \
-  include/crypto/hash.h \
-  include/linux/crypto.h \
-  include/linux/blockgroup_lock.h \
-  include/linux/falloc.h \
-  include/uapi/linux/falloc.h \
-  include/linux/compat.h \
-    $(wildcard include/config/compat/old/sigaction.h) \
-    $(wildcard include/config/odd/rt/sigaction.h) \
-  include/linux/socket.h \
-  arch/x86/include/uapi/asm/socket.h \
-  include/uapi/asm-generic/socket.h \
-  arch/x86/include/uapi/asm/sockios.h \
-  include/uapi/asm-generic/sockios.h \
-  include/uapi/linux/sockios.h \
-  include/linux/uio.h \
-  include/uapi/linux/uio.h \
-  include/uapi/linux/socket.h \
-  include/uapi/linux/if.h \
-  include/uapi/linux/libc-compat.h \
-  include/uapi/linux/hdlc/ioctl.h \
-  include/uapi/linux/aio_abi.h \
-  arch/x86/include/asm/compat.h \
-  arch/x86/include/asm/user32.h \
-  /home/himawari/work/aoe/linux/drivers/block/aoe/ext4_h/extents_status.h \
-  /home/himawari/work/aoe/linux/drivers/block/aoe/ext4_h/cache_status.h \
+  include/linux/delay.h \
+  arch/x86/include/asm/delay.h \
+  include/asm-generic/delay.h \
+  /home/himawari/work/aoe/linux/drivers/block/aoe/aoe.h \
 
-/home/himawari/work/aoe/linux/drivers/block/aoe/cache_status.o: $(deps_/home/himawari/work/aoe/linux/drivers/block/aoe/cache_status.o)
+/home/himawari/work/aoe/linux/drivers/block/aoe/aoechr.o: $(deps_/home/himawari/work/aoe/linux/drivers/block/aoe/aoechr.o)
 
-$(deps_/home/himawari/work/aoe/linux/drivers/block/aoe/cache_status.o):
+$(deps_/home/himawari/work/aoe/linux/drivers/block/aoe/aoechr.o):
